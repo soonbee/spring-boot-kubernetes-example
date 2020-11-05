@@ -12,6 +12,7 @@ import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.Configuration;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.V1Namespace;
+import io.kubernetes.client.openapi.models.V1NamespaceList;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodList;
@@ -27,6 +28,8 @@ import java.io.InputStreamReader;
 @RequestMapping("/kube")
 public class KubernetesController {
 
+	private CoreV1Api api = new CoreV1Api();
+
     public KubernetesController() throws IOException {
 		// loading cluster config from resource file
 		ClassPathResource resource = new ClassPathResource("kubeconfig.yaml");
@@ -39,15 +42,15 @@ public class KubernetesController {
 
 		// set the global default api-client to the in-cluster one from above
 		Configuration.setDefaultApiClient(client);
+
+		// the CoreV1Api loads default api-client from global configuration.
+		this.api = new CoreV1Api();
 	}
 
 	@GetMapping("/pods/{namespace}")
 	public String getNamespacedPods(@PathVariable("namespace") String namespace) {
-		// the CoreV1Api loads default api-client from global configuration.
-		CoreV1Api api = new CoreV1Api();
-
 		try {
-			V1PodList result = api.listNamespacedPod(namespace, null, null, null, null, null, null, null, null, null);
+			V1PodList result = this.api.listNamespacedPod(namespace, null, null, null, null, null, null, null, null, null);
 			System.out.println(result);
 		  } catch (ApiException e) {
 			System.err.println("Exception when calling CoreV1Api#listNamespacedPod");
@@ -59,18 +62,30 @@ public class KubernetesController {
 		return "get pods of namespace " + namespace;
 	}
 
+	@GetMapping("/namespace")
+	public String getNamespace() {
+		try {
+			V1NamespaceList result = this.api.listNamespace(null, null, null, null, null, null, null, null, null);
+			System.out.println(result);
+		  } catch (ApiException e) {
+			System.err.println("Exception when calling CoreV1Api#listNamespace");
+			System.err.println("Status code: " + e.getCode());
+			System.err.println("Reason: " + e.getResponseBody());
+			System.err.println("Response headers: " + e.getResponseHeaders());
+			e.printStackTrace();
+		  }
+		return "get namespaces";
+	}
+
 	@PutMapping("/namespace/{name}")
 	public String createNamespace(@PathVariable("name") String name) {
-		// the CoreV1Api loads default api-client from global configuration.
-		CoreV1Api api = new CoreV1Api();
-
 		V1Namespace body = new V1Namespace();
 		V1ObjectMeta meta = new V1ObjectMeta();
 		meta.setName(name);
 		body.setMetadata(meta);
 
 		try {
-			V1Namespace result = api.createNamespace(body, null, null, null);
+			V1Namespace result = this.api.createNamespace(body, null, null, null);
 			System.out.println(result);
 		} catch (ApiException e) {
 			System.err.println("Exception when calling CoreV1Api#createNamespace");
@@ -84,11 +99,8 @@ public class KubernetesController {
 
 	@DeleteMapping("/namespace/{name}")
 	public String deleteNamespace(@PathVariable("name") String name) {
-		// the CoreV1Api loads default api-client from global configuration.
-		CoreV1Api api = new CoreV1Api();
-
 		try {
-			V1Status result = api.deleteNamespace(name, null, null, null, null, null, null);
+			V1Status result = this.api.deleteNamespace(name, null, null, null, null, null, null);
 			System.out.println(result);
 		} catch (ApiException e) {
 			System.err.println("Exception when calling CoreV1Api#createNamespace");
